@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from hparams import Hparams
 
 
-class Network(torch.nn.Module):
+class LoPassNetwork(torch.nn.Module):
     """
     The Very Low early deadline architecture is a 4-layer CNN.
 
@@ -88,3 +89,88 @@ class Network(torch.nn.Module):
             out = m(out)
             print(m, out.shape)
         return out
+
+
+# Within each ConvNext block, the input dims will always equal the output dims
+class ConvNextBlock(nn.Module):
+    def __init__(self, channels, kernel_size, padding, density) -> None:
+        super().__init__()
+        # self.channles = channels
+        # self.kernel_size = kernel_size
+        # self.padding = padding
+
+        self.l1 = nn.Conv2d(
+            channels,
+            channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=channels,
+        )
+        self.lnorm = nn.LayerNorm(channels, eps=1e-6)
+        self.l2 = nn.Conv2d(channels, channels * density, kernel_size=1)
+        # GELU activation between l2 and l3
+        self.l3 = nn.Conv2d(channels * density, channels, kernel_size=1)
+
+    def forward(self, x):
+        out = self.l1(x)
+        out = self.lnorm(out)
+        out = self.l2(out)
+        out = self.l3(F.gelu(out))
+
+        return out + x
+
+
+class ResEXP(nn.Module):
+    def __init__(self, hparams: Hparams, channels=3, classes=7000) -> None:
+        super().__init__()
+        self.hparams = hparams
+
+        self.network = nn.ModuleList()
+
+        # initial layer
+        self.network.extend(
+            [
+                nn.Conv2d(
+                    channels, self.hparams.block_channels[0], kernel_size=4, stride=4
+                ),
+                nn.LayerNorm(self.hparams.block_channels[0], eps=1e-6),
+            ]
+        )
+
+        for i in range(len(self.hparams.block_channels)):
+            layers = [
+                ConvNextBlock(
+                    self.hparams.block_channels[i],
+                    kernel_size=hparams.kernel_size,
+                    padding=hparams.padding,
+                    density=hparams.density,
+                )
+                for block in range(hparams.block_depth[i])
+            ]
+            if i != len(self.hparams.block_channels) - 1:
+                # Append downsampling layer
+                layers.extend(
+                    [
+                        nn.LayerNorm(self.hparams.block_channels[i], eps=1e-6),
+                        nn.Conv2d(
+                            self.hparams.block_channels[i],
+                            self.hparams.block_channels[i + 1],
+                            kernel_size=2,
+                            stride=2,
+                        ),
+                    ]
+                )
+            else:
+                layers.append(nn.LayerNorm(self.hparams.block_channels[i], eps=1e-6))
+
+            self.network.extend(layers)
+
+        # Model head
+        self.head = nn.Linear(self.hparams.block_channels[-1], classes)
+
+    def forward(self, x, headless=False):
+        for layer in self.network:
+            x = layer(x)
+        if headless:
+            return x
+        return self.head(x)
