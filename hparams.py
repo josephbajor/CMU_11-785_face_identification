@@ -27,7 +27,8 @@ class Hparams:
     keyring_dir: os.PathLike = "/home/jbajor/Dev/keyring/"
 
     ### WandB Parameters ###
-    architecture: str = ""
+    architecture: str = "ResEXP_v1_micro"
+    project: str = "hw2p2-ablations"
 
     def wandb_export(self):
         to_exclude = ["data_dir", "keyring_dir"]
