@@ -109,16 +109,16 @@ class ConvNextBlock(nn.Module):
             groups=channels,
         )
         self.lnorm = nn.LayerNorm(channels, eps=1e-6)
-        self.l2 = nn.Conv2d(channels, channels * density, kernel_size=1)
+        self.l2 = nn.Linear(channels, channels * density)
         # GELU activation between l2 and l3
-        self.l3 = nn.Conv2d(channels * density, channels, kernel_size=1)
+        self.l3 = nn.Linear(channels * density, channels)
 
     def forward(self, x: torch.Tensor):
         # Assume that input comes with channels last (B,Y,X,C)
-        out = self.l1(x)
+        out = x.permute(0, 3, 1, 2)  # (B,Y,X,C) -> (B,C,Y,X)
+        out = self.l1(out)
         out = out.permute(0, 2, 3, 1)  # (B,C,Y,X) -> (B,Y,X,C)
         out = self.lnorm(out)
-        out = out.permute(0, 3, 1, 2)  # (B,Y,X,C) -> (B,C,Y,X)
         out = self.l2(out)
         out = self.l3(F.gelu(out))
 
@@ -130,55 +130,107 @@ class ResEXP(nn.Module):
         super().__init__()
         self.hparams = hparams
 
-        self.network = nn.ModuleList()
+        # self.core_network = nn.ModuleList()
 
         # initial layer
-        self.network.extend(
-            [
-                nn.Conv2d(
-                    in_channels, self.hparams.block_channels[0], kernel_size=4, stride=4
-                ),
-                nn.LayerNorm([self.hparams.block_channels[0], 56, 56], eps=1e-6),
-            ]
+        self.initial_layer = nn.Conv2d(
+            in_channels, self.hparams.block_channels[0], kernel_size=4, stride=4
+        )
+
+        ### Core Network Initialization ###
+        # NOTE: expects input as channels first (B,X,Y,C)
+
+        # Due to how layernorm is implemented in pytorch, permutations are needed between
+        # layernorm and conv layers. To deal with this, we generate a dictionary that
+        # contains front layers (before permute) and back layers (after permute)
+        # for each core network loop
+
+        self.core_layers = nn.ModuleDict()
+
+        # Initialize the first core layer early to insert the first layernorm ahead of the ConvNext Blocks
+        self.core_layers["l0_front"] = nn.ModuleList()
+        self.core_layers["l0_back"] = nn.ModuleList()
+
+        self.core_layers["l0_front"].append(
+            nn.LayerNorm(self.hparams.block_channels[0], eps=1e-6)
         )
 
         for i in range(len(self.hparams.block_channels)):
-            layers = [
-                ConvNextBlock(
-                    self.hparams.block_channels[i],
-                    kernel_size=hparams.kernel_size,
-                    density=hparams.density,
-                )
-                for block in range(hparams.block_depth[i])
-            ]
+
+            if i != 0:
+                self.core_layers[f"l{i}_front"] = nn.ModuleList()
+                self.core_layers[f"l{i}_back"] = nn.ModuleList()
+
+            layers_front, layers_back = [], []
+
+            layers_front.extend(
+                [
+                    ConvNextBlock(
+                        self.hparams.block_channels[i],
+                        kernel_size=hparams.kernel_size,
+                        density=hparams.density,
+                    )
+                    for block in range(hparams.block_depth[i])
+                ]
+            )
+
             if i != len(self.hparams.block_channels) - 1:
-                # Append downsampling layer
-                layers.extend(
-                    [
-                        nn.LayerNorm(
-                            [self.hparams.block_channels[i], 56, 56], eps=1e-6
-                        ),
-                        nn.Conv2d(
-                            self.hparams.block_channels[i],
-                            self.hparams.block_channels[i + 1],
-                            kernel_size=2,
-                            stride=2,
-                        ),
-                    ]
-                )
-            else:
-                layers.append(
-                    nn.LayerNorm([self.hparams.block_channels[i], 56, 56], eps=1e-6)
+                # Append downsampling components
+
+                layers_front.append(
+                    nn.LayerNorm(self.hparams.block_channels[i], eps=1e-6)
                 )
 
-            self.network.extend(layers)
+                layers_back.append(
+                    nn.Conv2d(
+                        self.hparams.block_channels[i],
+                        self.hparams.block_channels[i + 1],
+                        kernel_size=2,
+                        stride=2,
+                    )
+                )
+
+            else:
+                layers_front.append(
+                    nn.LayerNorm(self.hparams.block_channels[i], eps=1e-6)
+                )
+                layers_back.append(nn.AdaptiveAvgPool2d(output_size=1))
+
+            self.core_layers[f"l{i}_front"].extend(layers_front)
+            self.core_layers[f"l{i}_back"].extend(layers_back)
+
+        ### END Core Network Initialization ###
 
         # Model head
         self.head = nn.Linear(self.hparams.block_channels[-1], classes)
 
     def forward(self, x, headless=False):
-        for layer in self.network:
-            x = layer(x)
+        x = self.initial_layer(x)
+
+        for section_idx in range(len(self.hparams.block_channels)):
+
+            # print(f"section: {section_idx}")
+
+            # Permute before front forward pass
+            x = x.permute(0, 2, 3, 1)  # (B,C,Y,X) -> (B,Y,X,C)
+            # print(f"permute_f: {x.shape}")
+
+            # front layers forward pass
+            for layer in self.core_layers[f"l{section_idx}_front"]:
+                x = layer(x)
+            # print(f"front: {x.shape}")
+
+            # permute before back layers
+            x = x.permute(0, 3, 1, 2)  # (B,Y,X,C) -> (B,C,Y,X)
+            # print(f"permute_back: {x.shape}")
+
+            # back layers forward pass
+            for layer in self.core_layers[f"l{section_idx}_back"]:
+                x = layer(x)
+            # print(f"back: {x.shape}")
+
+        x = x.flatten(start_dim=1)
+
         if headless:
             return x
         return self.head(x)

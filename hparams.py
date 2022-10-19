@@ -9,7 +9,7 @@ class Hparams:
     transform_stack: tuple = ()
 
     ### Training Parameters ###
-    batch_size: int = 128
+    batch_size: int = 64
     lr: float = 0.1
     epochs: int = 25
 

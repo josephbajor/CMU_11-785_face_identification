@@ -46,7 +46,6 @@ if __name__ == "__main__":
 
     for i, (images, labels) in enumerate(dataloader):
 
-        print(i)
         optimizer.zero_grad()
 
         images, labels = images.to(device), labels.to(device)
