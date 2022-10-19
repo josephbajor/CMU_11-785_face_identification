@@ -10,10 +10,16 @@ def initiate_run(hparams:Hparams):
         wandb.login(key=key.read().strip())
         key.close()
 
+    if hparams.use_wandb:
+        mode = 'online'
+    else:
+        mode = 'disabled'
+
     run = wandb.init(
         name=f"{hparams.architecture}_{int(time.time())}",
         project=hparams.project,
-        config=hparams.wandb_export()
+        config=hparams.wandb_export(),
+        mode=mode
     )
 
     return run

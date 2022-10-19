@@ -93,17 +93,19 @@ class LoPassNetwork(torch.nn.Module):
 
 # Within each ConvNext block, the input dims will always equal the output dims
 class ConvNextBlock(nn.Module):
-    def __init__(self, channels, kernel_size, padding, density) -> None:
+    # TODO: Add dynamic layernorm setup
+
+    def __init__(self, channels, kernel_size, density) -> None:
         super().__init__()
-        # self.channles = channels
-        # self.kernel_size = kernel_size
-        # self.padding = padding
+
+        # shape of the input must remain the same as the output
+        self.padding: int = (kernel_size - 1) // 2  # assumes stride == 1
 
         self.l1 = nn.Conv2d(
             channels,
             channels,
             kernel_size=kernel_size,
-            padding=padding,
+            padding=self.padding,
             groups=channels,
         )
         self.lnorm = nn.LayerNorm(channels, eps=1e-6)
@@ -111,9 +113,12 @@ class ConvNextBlock(nn.Module):
         # GELU activation between l2 and l3
         self.l3 = nn.Conv2d(channels * density, channels, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        # Assume that input comes with channels last (B,Y,X,C)
         out = self.l1(x)
+        out = out.permute(0, 2, 3, 1)  # (B,C,Y,X) -> (B,Y,X,C)
         out = self.lnorm(out)
+        out = out.permute(0, 3, 1, 2)  # (B,Y,X,C) -> (B,C,Y,X)
         out = self.l2(out)
         out = self.l3(F.gelu(out))
 
@@ -121,7 +126,7 @@ class ConvNextBlock(nn.Module):
 
 
 class ResEXP(nn.Module):
-    def __init__(self, hparams: Hparams, channels=3, classes=7000) -> None:
+    def __init__(self, hparams: Hparams, in_channels=3, classes=7000) -> None:
         super().__init__()
         self.hparams = hparams
 
@@ -131,9 +136,9 @@ class ResEXP(nn.Module):
         self.network.extend(
             [
                 nn.Conv2d(
-                    channels, self.hparams.block_channels[0], kernel_size=4, stride=4
+                    in_channels, self.hparams.block_channels[0], kernel_size=4, stride=4
                 ),
-                nn.LayerNorm(self.hparams.block_channels[0], eps=1e-6),
+                nn.LayerNorm([self.hparams.block_channels[0], 56, 56], eps=1e-6),
             ]
         )
 
@@ -142,7 +147,6 @@ class ResEXP(nn.Module):
                 ConvNextBlock(
                     self.hparams.block_channels[i],
                     kernel_size=hparams.kernel_size,
-                    padding=hparams.padding,
                     density=hparams.density,
                 )
                 for block in range(hparams.block_depth[i])
@@ -151,7 +155,9 @@ class ResEXP(nn.Module):
                 # Append downsampling layer
                 layers.extend(
                     [
-                        nn.LayerNorm(self.hparams.block_channels[i], eps=1e-6),
+                        nn.LayerNorm(
+                            [self.hparams.block_channels[i], 56, 56], eps=1e-6
+                        ),
                         nn.Conv2d(
                             self.hparams.block_channels[i],
                             self.hparams.block_channels[i + 1],
@@ -161,7 +167,9 @@ class ResEXP(nn.Module):
                     ]
                 )
             else:
-                layers.append(nn.LayerNorm(self.hparams.block_channels[i], eps=1e-6))
+                layers.append(
+                    nn.LayerNorm([self.hparams.block_channels[i], 56, 56], eps=1e-6)
+                )
 
             self.network.extend(layers)
 

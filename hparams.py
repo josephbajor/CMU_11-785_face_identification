@@ -18,8 +18,7 @@ class Hparams:
     ## ResBlock Params ##
     block_depth: tuple = (3, 3, 9, 3)
     block_channels: tuple = (96, 192, 384, 768)
-    kernel_size: int = 3
-    padding: int = 3
+    kernel_size: int = 3  # Must be odd
     density: int = 4
 
     ### Sys Parameters ###
@@ -29,9 +28,10 @@ class Hparams:
     ### WandB Parameters ###
     architecture: str = "ResEXP_v1_micro"
     project: str = "hw2p2-ablations"
+    use_wandb: bool = False
 
     def wandb_export(self):
-        to_exclude = ["data_dir", "keyring_dir"]
+        to_exclude = ["data_dir", "keyring_dir", "use_wandb"]
 
         config = asdict(self)
 
