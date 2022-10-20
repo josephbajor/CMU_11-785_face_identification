@@ -1,7 +1,12 @@
-import tqdm
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from dataproc import build_loaders
+from hparams import Hparams
+from model import ResEXP
+from utils import initiate_run
+import wandb
 
 
 def train(model, hparams, dataloader, optimizer, criterion, scaler, device):
@@ -100,3 +105,86 @@ def validate(model, hparams, dataloader, criterion, device):
     acc = 100 * num_correct / (hparams.batch_size * len(dataloader))
     total_loss = float(total_loss / len(dataloader))
     return acc, total_loss
+
+
+def main(hparams: Hparams, device_override: str = None) -> None:
+
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_built():
+        device = "mps"
+    else:
+        device = "cpu"
+
+    if device_override:
+        device = device_override
+
+    train_loader, val_loader, test_loader = build_loaders(hparams)
+
+    model = ResEXP(hparams).to(device)
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
+    # TODO: Implement a scheduler (Optional but Highly Recommended)
+    scaler = torch.cuda.amp.GradScaler()
+
+    run = initiate_run(hparams)
+
+    wandb.watch(model, log="all")
+
+    best_valacc = 0.0
+
+    for epoch in range(hparams.epochs):
+
+        curr_lr = float(optimizer.param_groups[0]["lr"])
+
+        train_acc, train_loss = train(
+            model, hparams, train_loader, optimizer, criterion, scaler, device
+        )
+
+        print(
+            "\nEpoch {}/{}: \nTrain Acc {:.04f}%\t Train Loss {:.04f}\t Learning Rate {:.04f}".format(
+                epoch + 1, hparams.epochs, train_acc, train_loss, curr_lr
+            )
+        )
+
+        val_acc, val_loss = validate(model, hparams, val_loader, criterion, device)
+
+        print("Val Acc {:.04f}%\t Val Loss {:.04f}".format(val_acc, val_loss))
+
+        wandb.log(
+            {
+                "train_loss": train_loss,
+                "train_Acc": train_acc,
+                "validation_Acc": val_acc,
+                "validation_loss": val_loss,
+                "learning_Rate": curr_lr,
+            }
+        )
+
+        # If you are using a scheduler in your train function within your iteration loop, you may want to log
+        # your learning rate differently
+
+        # #Save model in drive location if val_acc is better than best recorded val_acc
+        if val_acc >= best_valacc:
+            # path = os.path.join(root, model_directory, 'checkpoint' + '.pth')
+            print("Saving model")
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    #'scheduler_state_dict':scheduler.state_dict(),
+                    "val_acc": val_acc,
+                    "epoch": epoch,
+                },
+                "./checkpoint.pth",
+            )
+            best_valacc = val_acc
+            wandb.save("checkpoint.pth")
+            # You may find it interesting to exlplore Wandb Artifcats to version your models
+    run.finish()
+
+
+if __name__ == "__main__":
+    hparams = Hparams()
+    main(hparams, device_override=None)

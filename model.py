@@ -91,6 +91,12 @@ class LoPassNetwork(torch.nn.Module):
         return out
 
 
+class ResNetBlock(nn.Module):
+    def __init__(self, channels, kernel_size, density) -> None:
+        super().__init__()
+        pass
+
+
 # Within each ConvNext block, the input dims will always equal the output dims
 class ConvNextBlock(nn.Module):
     # TODO: Add dynamic layernorm setup
@@ -115,14 +121,15 @@ class ConvNextBlock(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # Assume that input comes with channels last (B,Y,X,C)
-        out = x.permute(0, 3, 1, 2)  # (B,Y,X,C) -> (B,C,Y,X)
-        out = self.l1(out)
-        out = out.permute(0, 2, 3, 1)  # (B,C,Y,X) -> (B,Y,X,C)
-        out = self.lnorm(out)
-        out = self.l2(out)
-        out = self.l3(F.gelu(out))
+        residual = x
+        x = x.permute(0, 3, 1, 2)  # (B,Y,X,C) -> (B,C,Y,X)
+        x = self.l1(x)
+        x = x.permute(0, 2, 3, 1)  # (B,C,Y,X) -> (B,Y,X,C)
+        x = self.lnorm(x)
+        x = self.l2(x)
+        x = self.l3(F.gelu(x))
 
-        return out + x
+        return x + residual
 
 
 class ResEXP(nn.Module):
