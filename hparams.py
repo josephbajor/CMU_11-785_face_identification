@@ -16,8 +16,8 @@ class Hparams:
     ### Model Parameters ###
 
     ## ResBlock Params ##
-    block_depth: tuple = (2, 3, 2)
-    block_channels: tuple = (64, 128, 256)
+    block_depth: tuple = (3, 3, 9, 3)
+    block_channels: tuple = (96, 192, 384, 768)
     kernel_size: int = 7  # Must be odd
     density: int = 4
 
@@ -26,10 +26,11 @@ class Hparams:
     # data_dir: os.PathLike = "/Users/josephbajor/Dev/Datasets/11-785-f22-hw2p2/"  # MacOS
     keyring_dir: os.PathLike = "/home/jbajor/Dev/keyring/"  # Ubuntu
     # keyring_dir: os.PathLike = "/Users/josephbajor/Dev/keyring/"  # MacOS
+    model_dir: os.PathLike = "/home/jbajor/Dev/CMU-IDL/models/"
 
     ### WandB Parameters ###
     architecture: str = (
-        f"ResNext-BN_mini_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
+        f"ResNext-BN_XL_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     )
     project: str = "hw2p2-ablations"
     use_wandb: bool = True

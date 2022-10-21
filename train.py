@@ -1,10 +1,11 @@
+import os
 from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dataproc import build_loaders
 from hparams import Hparams
-from model import ResEXP
+from model import ResNext_BN
 from utils import initiate_run
 import wandb
 
@@ -107,7 +108,11 @@ def validate(model, hparams, dataloader, criterion, device):
     return acc, total_loss
 
 
-def main(hparams: Hparams, device_override: str = None) -> None:
+def main(
+    hparams: Hparams, device_override: str = None, warm_start: bool = False
+) -> None:
+
+    # TODO: Implement warm start (in this func, better model saving)
 
     if torch.cuda.is_available():
         device = "cuda"
@@ -119,9 +124,16 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     if device_override:
         device = device_override
 
+    model_pth = os.path.join(
+        hparams.model_dir, f"{hparams.architecture}/checkpoint.pth"
+    )
+    os.makedirs(
+        os.path.join(hparams.model_dir, f"{hparams.architecture}/"), exist_ok=True
+    )
+
     train_loader, val_loader, test_loader = build_loaders(hparams)
 
-    model = ResEXP(hparams).to(device)
+    model = ResNext_BN(hparams).to(device)
 
     criterion = nn.CrossEntropyLoss()
     # optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
@@ -129,13 +141,25 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     # TODO: Implement a scheduler (Optional but Highly Recommended)
     scaler = torch.cuda.amp.GradScaler()
 
+    epoch_offset = 0
+
+    if warm_start:
+        params = torch.load(model_pth)
+        model.load_state_dict(params["model_state_dict"])
+        optimizer.load_state_dict(params["optimizer_state_dict"])
+        epoch_offset = params["epoch"]
+
     run = initiate_run(hparams)
 
     wandb.watch(model, log="all")
 
     best_valacc = 0.0
 
-    for epoch in range(hparams.epochs):
+    wandb.config.update(
+        {"parameters": sum(p.numel() for p in model.parameters() if p.requires_grad)}
+    )
+
+    for epoch in range(epoch_offset, hparams.epochs):
 
         curr_lr = float(optimizer.param_groups[0]["lr"])
 
@@ -169,7 +193,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         # #Save model in drive location if val_acc is better than best recorded val_acc
         if val_acc >= best_valacc:
             # path = os.path.join(root, model_directory, 'checkpoint' + '.pth')
-            print("Saving model")
+            print("Saving model...")
             torch.save(
                 {
                     "model_state_dict": model.state_dict(),
@@ -178,10 +202,11 @@ def main(hparams: Hparams, device_override: str = None) -> None:
                     "val_acc": val_acc,
                     "epoch": epoch,
                 },
-                "./checkpoint.pth",
+                model_pth,
             )
+            print(f"Saved to {model_pth}")
             best_valacc = val_acc
-            wandb.save("checkpoint.pth")
+            wandb.save(model_pth)
             # You may find it interesting to exlplore Wandb Artifcats to version your models
     run.finish()
 
