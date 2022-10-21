@@ -124,7 +124,8 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     model = ResEXP(hparams).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
+    optimizer = torch.optim.SGD(params=model.parameters(), lr=hparams.lr)
     # TODO: Implement a scheduler (Optional but Highly Recommended)
     scaler = torch.cuda.amp.GradScaler()
 

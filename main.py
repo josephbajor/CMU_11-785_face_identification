@@ -1,7 +1,6 @@
 if __name__ == "__main__":
     from hparams import Hparams
-    from model import ResEXP
-    from dataproc import build_loaders
+    from model import ResNext_BN
     import torch
     import torch.nn as nn
     import os
@@ -35,7 +34,7 @@ if __name__ == "__main__":
         pin_memory=True,
     )
 
-    model = ResEXP(hparams).to(device)
+    model = ResNext_BN(hparams).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
@@ -46,6 +45,7 @@ if __name__ == "__main__":
 
     for i, (images, labels) in enumerate(dataloader):
 
+        print(i)
         optimizer.zero_grad()
 
         images, labels = images.to(device), labels.to(device)

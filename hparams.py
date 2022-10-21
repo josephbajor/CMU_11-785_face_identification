@@ -10,8 +10,8 @@ class Hparams:
 
     ### Training Parameters ###
     batch_size: int = 64
-    lr: float = 4e-3
-    epochs: int = 25
+    lr: float = 0.1
+    epochs: int = 40
 
     ### Model Parameters ###
 
@@ -28,7 +28,9 @@ class Hparams:
     # keyring_dir: os.PathLike = "/Users/josephbajor/Dev/keyring/"  # MacOS
 
     ### WandB Parameters ###
-    architecture: str = "ResEXP_dev"
+    architecture: str = (
+        f"ResNext-BN_mini_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
+    )
     project: str = "hw2p2-ablations"
     use_wandb: bool = True
 

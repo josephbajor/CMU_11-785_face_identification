@@ -92,9 +92,116 @@ class LoPassNetwork(torch.nn.Module):
 
 
 class ResNetBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, kernel_size, density) -> None:
+        super().__init__()
+
+        self.padding: int = (kernel_size - 1) // 2
+
+        self.core = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=kernel_size, padding=self.padding),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(),
+            nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, padding=self.padding),
+            nn.BatchNorm2d(out_ch),
+        )
+
+
+class ConvNextBlock_BN(nn.Module):
     def __init__(self, channels, kernel_size, density) -> None:
         super().__init__()
-        pass
+        # shape of the input must remain the same as the output
+        self.padding: int = (kernel_size - 1) // 2  # assumes stride == 1
+
+        self.conv_dwise = nn.Conv2d(
+            channels,
+            channels,
+            kernel_size=kernel_size,
+            padding=self.padding,
+            groups=channels,
+        )
+        self.bnorm = nn.BatchNorm2d(channels)
+        self.conv_pwise_1 = nn.Conv2d(channels, channels * density, kernel_size=1)
+        self.conv_pwise_2 = nn.Conv2d(channels * density, channels, kernel_size=1)
+
+    def forward(self, x: torch.Tensor):
+        residual = x
+
+        x = self.conv_dwise(x)
+        x = self.bnorm(x)
+        x = self.conv_pwise_1(F.gelu(x))
+        x = self.conv_pwise_2(F.gelu(x))
+
+        return x + residual
+
+
+class ResNext_BN(nn.Module):
+    def __init__(self, hparams: Hparams, in_channels=3, classes=7000) -> None:
+        super().__init__()
+
+        self.hparams = hparams
+
+        self.backbone = nn.ModuleList()
+
+        # initial layers
+        self.backbone.extend(
+            [
+                nn.Conv2d(
+                    in_channels, self.hparams.block_channels[0], kernel_size=4, stride=4
+                ),
+                nn.BatchNorm2d(hparams.block_channels[0]),
+            ]
+        )
+        ### Core Network Construction ###
+
+        for i in range(len(self.hparams.block_channels)):
+
+            layers = [
+                ConvNextBlock_BN(
+                    self.hparams.block_channels[i],
+                    kernel_size=hparams.kernel_size,
+                    density=hparams.density,
+                )
+                for block in range(hparams.block_depth[i])
+            ]
+
+            if i != len(self.hparams.block_channels) - 1:
+                # Append downsampling components
+                layers.extend(
+                    [
+                        nn.BatchNorm2d(self.hparams.block_channels[i]),
+                        nn.Conv2d(
+                            self.hparams.block_channels[i],
+                            self.hparams.block_channels[i + 1],
+                            kernel_size=2,
+                            stride=2,
+                        ),
+                    ]
+                )
+
+            else:
+                layers.extend(
+                    [
+                        nn.BatchNorm2d(self.hparams.block_channels[i]),
+                        nn.AdaptiveAvgPool2d(output_size=1),
+                    ]
+                )
+
+            self.backbone.extend(layers)
+        ### END Core Network Initialization ###
+
+        # Model head
+        self.head = nn.Linear(self.hparams.block_channels[-1], classes)
+
+    def forward(self, x: torch.Tensor, headless=False):
+
+        for layer in self.backbone:
+            x = layer(x)
+
+        x = x.flatten(start_dim=1)
+
+        if headless:
+            return x
+        return self.head(x)
 
 
 # Within each ConvNext block, the input dims will always equal the output dims
