@@ -112,8 +112,6 @@ def main(
     hparams: Hparams, device_override: str = None, warm_start: bool = False
 ) -> None:
 
-    # TODO: Implement warm start (in this func, better model saving)
-
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_built():
@@ -136,9 +134,12 @@ def main(
     model = ResNext_BN(hparams).to(device)
 
     criterion = nn.CrossEntropyLoss()
+
     # optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
     optimizer = torch.optim.SGD(params=model.parameters(), lr=hparams.lr)
-    # TODO: Implement a scheduler (Optional but Highly Recommended)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer=optimizer, T_max=40
+    )
     scaler = torch.cuda.amp.GradScaler()
 
     epoch_offset = 0
@@ -177,18 +178,17 @@ def main(
 
         print("Val Acc {:.04f}%\t Val Loss {:.04f}".format(val_acc, val_loss))
 
+        scheduler.step(epoch)
+
         wandb.log(
             {
                 "train_loss": train_loss,
                 "train_Acc": train_acc,
                 "validation_Acc": val_acc,
                 "validation_loss": val_loss,
-                "learning_Rate": curr_lr,
+                "learning_Rate": scheduler.get_last_lr(),
             }
         )
-
-        # If you are using a scheduler in your train function within your iteration loop, you may want to log
-        # your learning rate differently
 
         # #Save model in drive location if val_acc is better than best recorded val_acc
         if val_acc >= best_valacc:
@@ -198,7 +198,7 @@ def main(
                 {
                     "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
-                    #'scheduler_state_dict':scheduler.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict(),
                     "val_acc": val_acc,
                     "epoch": epoch,
                 },
@@ -206,7 +206,8 @@ def main(
             )
             print(f"Saved to {model_pth}")
             best_valacc = val_acc
-            wandb.save(model_pth)
+            if val_acc > 0.8:
+                wandb.save(model_pth)
             # You may find it interesting to exlplore Wandb Artifcats to version your models
     run.finish()
 

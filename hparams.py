@@ -1,11 +1,20 @@
 from dataclasses import dataclass, asdict
 import os
+from torchvision import transforms
 
 
 @dataclass
 class Hparams:
 
     ### Preprocessing Parameters ###
+    transform_stack: tuple = (
+        transforms.ColorJitter(
+            brightness=(0.6, 1.4),
+            saturation=(0.6, 1.4),
+        ),
+        transforms.RandomRotation(degrees=20, fill=0),
+    )
+
     transform_stack: tuple = ()
 
     ### Training Parameters ###
@@ -30,7 +39,7 @@ class Hparams:
 
     ### WandB Parameters ###
     architecture: str = (
-        f"ResNext-BN_XL_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
+        f"ResNext-BN_XL_v3_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     )
     project: str = "hw2p2-ablations"
     use_wandb: bool = True

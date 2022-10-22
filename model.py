@@ -233,7 +233,7 @@ class ConvNextBlock(nn.Module):
         x = self.l1(x)
         x = x.permute(0, 2, 3, 1)  # (B,C,Y,X) -> (B,Y,X,C)
         x = self.lnorm(x)
-        x = self.l2(x)
+        x = self.l2(F.gelu(x))
         x = self.l3(F.gelu(x))
 
         return x + residual
