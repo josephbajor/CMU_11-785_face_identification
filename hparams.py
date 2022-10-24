@@ -9,10 +9,10 @@ class Hparams:
     ### Preprocessing Parameters ###
     transform_stack_PIL: tuple = (
         transforms.ColorJitter(
-            brightness=(0.7, 1.4), saturation=(0.7, 1.4), hue=(0.06)
+            brightness=(0.7, 1.4), saturation=(0.7, 1.4), hue=(0.065)
         ),
         transforms.RandomAdjustSharpness(0.2),
-        transforms.RandomPerspective(0.4, p=0.2),
+        transforms.RandomPerspective(0.5, p=0.3),
         transforms.RandomHorizontalFlip(p=0.5),
     )
 
@@ -33,7 +33,7 @@ class Hparams:
 
     ### Sys Parameters ###
 
-    platform: str = "desktop"
+    platform: str = "mac"
 
     if platform == "desktop":
         data_dir: os.PathLike = (
