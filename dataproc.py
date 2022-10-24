@@ -31,8 +31,9 @@ def build_loaders(hparams: Hparams):
     VAL_DIR = os.path.join(hparams.data_dir, "classification/dev")
     TEST_DIR = os.path.join(hparams.data_dir, "classification/test")
 
-    transform_stack = list(hparams.transform_stack)
+    transform_stack = list(hparams.transform_stack_PIL)
     transform_stack.append(torchvision.transforms.ToTensor())
+    transform_stack.extend(list(hparams.transform_stack_tensor))
 
     train_transforms = torchvision.transforms.Compose(transform_stack)
     val_transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])

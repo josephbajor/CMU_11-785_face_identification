@@ -7,15 +7,16 @@ from torchvision import transforms
 class Hparams:
 
     ### Preprocessing Parameters ###
-    transform_stack: tuple = (
+    transform_stack_PIL: tuple = (
         transforms.ColorJitter(
             brightness=(0.7, 1.4), saturation=(0.7, 1.4), hue=(0.06)
         ),
         transforms.RandomAdjustSharpness(0.2),
         transforms.RandomPerspective(0.4, p=0.2),
         transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomErasing(p=0.3),
     )
+
+    transform_stack_tensor: tuple = (transforms.RandomErasing(p=0.3),)
 
     ### Training Parameters ###
     batch_size: int = 128
@@ -32,7 +33,7 @@ class Hparams:
 
     ### Sys Parameters ###
 
-    platform: str = "mac"
+    platform: str = "desktop"
 
     if platform == "desktop":
         data_dir: os.PathLike = (
@@ -55,13 +56,18 @@ class Hparams:
 
     ### WandB Parameters ###
     architecture: str = (
-        f"ResNext-BN_XL_v4_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
+        f"ResNext-BN_Tform-LS_v4_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     )
     project: str = "hw2p2-ablations"
     use_wandb: bool = True
 
     def wandb_export(self):
-        to_exclude = ["data_dir", "keyring_dir", "use_wandb"]
+        to_exclude = [
+            "data_dir",
+            "keyring_dir",
+            "model_dir",
+            "use_wandb",
+        ]
 
         config = asdict(self)
 
