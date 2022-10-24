@@ -31,11 +31,14 @@ class Hparams:
     density: int = 4
 
     ### Sys Parameters ###
-    data_dir: os.PathLike = "/home/jbajor/Dev/CMU-IDL/datasets/hw2p2/"  # Ubuntu
+    # data_dir: os.PathLike = "/home/jbajor/Dev/CMU-IDL/datasets/hw2p2/"  # Ubuntu Local
     # data_dir: os.PathLike = "/Users/josephbajor/Dev/Datasets/11-785-f22-hw2p2/"  # MacOS
-    keyring_dir: os.PathLike = "/home/jbajor/Dev/keyring/"  # Ubuntu
+    data_dir: os.PathLike = "/home/josephbajor/data/"
+    # keyring_dir: os.PathLike = "/home/jbajor/Dev/keyring/"  # Ubuntu Local
     # keyring_dir: os.PathLike = "/Users/josephbajor/Dev/keyring/"  # MacOS
-    model_dir: os.PathLike = "/home/jbajor/Dev/CMU-IDL/models/"
+    keyring_dir: os.PathLike = "/home/josephbajor/keyring/"  # Sagemaker
+    # model_dir: os.PathLike = "/home/jbajor/Dev/CMU-IDL/models/" #Ubuntu Local
+    model_dir: os.PathLike = "/home/josephbajor/models/"  # Sagemaker
 
     ### WandB Parameters ###
     architecture: str = (

@@ -43,3 +43,7 @@ def load_model(hparams, model, optimizer, scheduler=None):
         return model, optimizer, scheduler
 
     return model, optimizer
+
+
+def prepare_instance() -> None:
+    return NotImplementedError
