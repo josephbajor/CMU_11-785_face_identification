@@ -3,6 +3,8 @@ import time
 import os
 import wandb
 import torch
+import torchvision
+from random import randrange
 
 
 def initiate_run(hparams: Hparams):
@@ -47,3 +49,20 @@ def load_model(hparams, model, optimizer, scheduler=None):
 
 def prepare_instance() -> None:
     return NotImplementedError
+
+
+def test_transforms(hparams, num: int = 5, start: int = -1) -> None:
+    TRAIN_DIR = os.path.join(hparams.data_dir, "classification/train")
+    transform_stack = list(hparams.transform_stack)
+    train_transforms = torchvision.transforms.Compose(transform_stack)
+    train_dataset = torchvision.datasets.ImageFolder(
+        TRAIN_DIR, transform=train_transforms
+    )
+
+    if start == -1:
+        offset = randrange(start=0, stop=len(train_dataset) - num)
+    else:
+        offset = start
+
+    for i in range(offset, offset + num):
+        display(train_dataset[i][0])

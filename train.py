@@ -133,7 +133,7 @@ def main(
 
     model = ResNext_BN(hparams).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.15)
 
     # optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
     optimizer = torch.optim.SGD(params=model.parameters(), lr=hparams.lr)
