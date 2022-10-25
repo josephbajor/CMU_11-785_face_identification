@@ -64,7 +64,7 @@ class Hparams:
     ### WandB Parameters ###
     architecture: str = f"{model}{'_Tform' if use_transforms else ''}_v5_{optim_func}_{'SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     project: str = "hw2p2-ablations"
-    use_wandb: bool = False
+    use_wandb: bool = True
 
     def wandb_export(self):
         to_exclude = [

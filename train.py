@@ -198,7 +198,7 @@ def main(
                 "train_Acc": train_acc,
                 "validation_Acc": val_acc,
                 "validation_loss": val_loss,
-                "learning_Rate": scheduler.get_last_lr(),
+                "learning_Rate": curr_lr,
             }
         )
 
