@@ -21,7 +21,7 @@ class Hparams:
     transform_stack_tensor: tuple = (transforms.RandomErasing(p=0.3),)
 
     ### Training Parameters ###
-    batch_size: int = 64
+    batch_size: int = 256
     lr: float = 1e-3
     epochs: int = 100
 
@@ -34,15 +34,13 @@ class Hparams:
     weight_decay: float = 0.01
 
     ## ResBlock Params ##
-    # block_depth: tuple = (5, 5, 12, 5)
-    # block_channels: tuple = (96, 192, 384, 768)
-    block_depth: tuple = (3, 5, 3)
-    block_channels: tuple = (96, 256, 512)
+    block_depth: tuple = (5, 5, 12, 5)
+    block_channels: tuple = (96, 192, 384, 768)
     kernel_size: int = 7  # Must be odd
     density: int = 4
 
     ### Sys Parameters ###
-    platform: str = "desktop"
+    platform: str = "cloud"
 
     if platform == "desktop":
         data_dir: os.PathLike = (
@@ -64,7 +62,7 @@ class Hparams:
         model_dir: os.PathLike = "/home/josephbajor/models/"  # CompEng
 
     ### WandB Parameters ###
-    architecture: str = f"{model}{'_Tform' if use_transforms else ''}_v4_{optim_func}_{'SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
+    architecture: str = f"{model}{'_Tform' if use_transforms else ''}_v5_{optim_func}_{'SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     project: str = "hw2p2-ablations"
     use_wandb: bool = False
 
