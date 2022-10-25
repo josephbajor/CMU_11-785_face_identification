@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from dataproc import build_loaders
 from hparams import Hparams
-from model import ResNext_BN
+from model import ResNext_BN, ResNext
 from utils import initiate_run
 import wandb
 
@@ -131,14 +131,22 @@ def main(
 
     train_loader, val_loader, test_loader = build_loaders(hparams)
 
-    model = ResNext_BN(hparams).to(device)
+    if hparams.model == "ResNext":
+        model = ResNext(hparams).to(device)
+    if hparams.model == "ResNext-BN":
+        model = ResNext_BN(hparams).to(device)
 
     criterion = nn.CrossEntropyLoss(label_smoothing=0.15)
 
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
-    optimizer = torch.optim.SGD(params=model.parameters(), lr=hparams.lr)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer=optimizer, T_max=40
+    if hparams.optim_func == "AdamW":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
+    if hparams.optim_func == "SGD":
+        optimizer = torch.optim.SGD(params=model.parameters(), lr=hparams.lr)
+    else:
+        assert NameError, "optim_func must be AdamW or SGD!"
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer=optimizer, patience=3
     )
     scaler = torch.cuda.amp.GradScaler()
 

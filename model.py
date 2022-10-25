@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from hparams import Hparams
+from torchvision.ops import stochastic_depth
+import random
+import numpy as np
 
 
 class LoPassNetwork(torch.nn.Module):
@@ -107,10 +110,22 @@ class ResNetBlock(nn.Module):
 
 
 class ConvNextBlock_BN(nn.Module):
-    def __init__(self, channels, kernel_size, density) -> None:
+    def __init__(
+        self,
+        channels: int,
+        kernel_size: int,
+        density: int,
+        drop_block: bool = False,
+        drop_path: bool = False,
+        p_drop: float = 0.0,
+    ) -> None:
         super().__init__()
         # shape of the input must remain the same as the output
         self.padding: int = (kernel_size - 1) // 2  # assumes stride == 1
+
+        self.p_drop = p_drop
+        self.drop_block = drop_block
+        self.drop_path = drop_path
 
         self.conv_dwise = nn.Conv2d(
             channels,
@@ -123,13 +138,26 @@ class ConvNextBlock_BN(nn.Module):
         self.conv_pwise_1 = nn.Conv2d(channels, channels * density, kernel_size=1)
         self.conv_pwise_2 = nn.Conv2d(channels * density, channels, kernel_size=1)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, training=False):
         residual = x
+
+        if (
+            self.p_drop != 0.0
+            and self.drop_block
+            and random.random() < (self.p_drop)
+            and training
+        ):
+            return residual
 
         x = self.conv_dwise(x)
         x = self.bnorm(x)
         x = self.conv_pwise_1(F.gelu(x))
         x = self.conv_pwise_2(F.gelu(x))
+
+        if self.p_drop != 0.0 and self.drop_path:
+            return x + stochastic_depth(
+                residual, p=self.p_drop, mode="batch", training=training
+            )
 
         return x + residual
 
@@ -141,6 +169,13 @@ class ResNext_BN(nn.Module):
         self.hparams = hparams
 
         self.backbone = nn.ModuleList()
+
+        if self.hparams.drop_blocks or self.hparams.drop_path:
+            self.drop_probs = np.linspace(
+                start=0,
+                stop=self.hparams.max_drop_prob,
+                num=sum(self.hparams.block_depth),
+            )
 
         # initial layers
         self.backbone.extend(
@@ -155,11 +190,21 @@ class ResNext_BN(nn.Module):
 
         for i in range(len(self.hparams.block_channels)):
 
+            if i == 0:
+                past = 0
+            else:
+                past = past + self.hparams.block_depth[i - 1]
+
             layers = [
                 ConvNextBlock_BN(
                     self.hparams.block_channels[i],
                     kernel_size=hparams.kernel_size,
                     density=hparams.density,
+                    drop_block=self.hparams.drop_blocks,
+                    drop_path=self.hparams.drop_path,
+                    p_drop=self.drop_probs[past + block]
+                    if self.hparams.drop_blocks
+                    else 0.0,
                 )
                 for block in range(hparams.block_depth[i])
             ]
@@ -195,7 +240,10 @@ class ResNext_BN(nn.Module):
     def forward(self, x: torch.Tensor, headless=False):
 
         for layer in self.backbone:
-            x = layer(x)
+            if isinstance(layer, ConvNextBlock_BN):
+                x = layer(x, self.training)
+            else:
+                x = layer(x)
 
         x = x.flatten(start_dim=1)
 
@@ -239,7 +287,7 @@ class ConvNextBlock(nn.Module):
         return x + residual
 
 
-class ResEXP(nn.Module):
+class ResNext(nn.Module):
     def __init__(self, hparams: Hparams, in_channels=3, classes=7000) -> None:
         super().__init__()
         self.hparams = hparams

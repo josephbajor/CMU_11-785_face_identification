@@ -7,6 +7,8 @@ from torchvision import transforms
 class Hparams:
 
     ### Preprocessing Parameters ###
+    use_transforms: bool = False
+
     transform_stack_PIL: tuple = (
         transforms.ColorJitter(
             brightness=(0.7, 1.4), saturation=(0.7, 1.4), hue=(0.065)
@@ -19,21 +21,25 @@ class Hparams:
     transform_stack_tensor: tuple = (transforms.RandomErasing(p=0.3),)
 
     ### Training Parameters ###
-    batch_size: int = 128
+    batch_size: int = 64
     lr: float = 0.1
     epochs: int = 40
 
     ### Model Parameters ###
+    model: str = "ResNext-BN"
+    optim_func: str = "SGD"
+    drop_blocks: bool = False  # Disables blocks for entire batch
+    drop_path: bool = True  # Disables blocks for certian samples per batch
+    max_drop_prob: float = 0.5
 
     ## ResBlock Params ##
-    block_depth: tuple = (3, 3, 9, 3)
+    block_depth: tuple = (5, 5, 12, 5)
     block_channels: tuple = (96, 192, 384, 768)
     kernel_size: int = 7  # Must be odd
     density: int = 4
 
     ### Sys Parameters ###
-
-    platform: str = "mac"
+    platform: str = "desktop"
 
     if platform == "desktop":
         data_dir: os.PathLike = (
@@ -55,11 +61,9 @@ class Hparams:
         model_dir: os.PathLike = "/home/josephbajor/models/"  # CompEng
 
     ### WandB Parameters ###
-    architecture: str = (
-        f"ResNext-BN_Tform-LS_v4_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
-    )
+    architecture: str = f"{model}{'_Tform' if use_transforms else ''}_v4_{optim_func}_{'SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     project: str = "hw2p2-ablations"
-    use_wandb: bool = True
+    use_wandb: bool = False
 
     def wandb_export(self):
         to_exclude = [
