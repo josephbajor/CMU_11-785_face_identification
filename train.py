@@ -139,9 +139,13 @@ def main(
     criterion = nn.CrossEntropyLoss(label_smoothing=0.15)
 
     if hparams.optim_func == "AdamW":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=hparams.lr)
+        optimizer = torch.optim.AdamW(
+            model.parameters(), lr=hparams.lr, weight_decay=hparams.weight_decay
+        )
     if hparams.optim_func == "SGD":
-        optimizer = torch.optim.SGD(params=model.parameters(), lr=hparams.lr)
+        optimizer = torch.optim.SGD(
+            params=model.parameters(), lr=hparams.lr, weight_decay=hparams.weight_decay
+        )
     else:
         assert NameError, "optim_func must be AdamW or SGD!"
 

@@ -22,19 +22,22 @@ class Hparams:
 
     ### Training Parameters ###
     batch_size: int = 64
-    lr: float = 0.1
-    epochs: int = 40
+    lr: float = 1e-3
+    epochs: int = 100
 
     ### Model Parameters ###
     model: str = "ResNext-BN"
-    optim_func: str = "SGD"
+    optim_func: str = "AdamW"
     drop_blocks: bool = False  # Disables blocks for entire batch
     drop_path: bool = True  # Disables blocks for certian samples per batch
     max_drop_prob: float = 0.5
+    weight_decay: float = 0.01
 
     ## ResBlock Params ##
-    block_depth: tuple = (5, 5, 12, 5)
-    block_channels: tuple = (96, 192, 384, 768)
+    # block_depth: tuple = (5, 5, 12, 5)
+    # block_channels: tuple = (96, 192, 384, 768)
+    block_depth: tuple = (3, 5, 3)
+    block_channels: tuple = (96, 256, 512)
     kernel_size: int = 7  # Must be odd
     density: int = 4
 
