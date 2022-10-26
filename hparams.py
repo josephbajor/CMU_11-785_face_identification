@@ -20,8 +20,8 @@ class Hparams:
 
     # transform_stack_tensor: tuple = (transforms.RandomErasing(p=0.3),)
 
-    transform_stack_PIL: tuple = transforms.AutoAugment(
-        policy=transforms.AutoAugmentPolicy("svhn")
+    transform_stack_PIL: tuple = (
+        transforms.AutoAugment(policy=transforms.AutoAugmentPolicy("svhn")),
     )
 
     transform_stack_tensor: tuple = ()

@@ -152,7 +152,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     # )
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=10, eta_min=1e-6
+        optimizer, T_max=15, eta_min=1e-6
     )
 
     scaler = torch.cuda.amp.GradScaler()
