@@ -138,6 +138,8 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         os.path.join(hparams.model_dir, f"{hparams.architecture}/"), exist_ok=True
     )
 
+    os.makedirs(hparams.force_save_path, exist_ok=True)
+
     train_loader, val_loader, test_loader = build_loaders(hparams)
 
     if hparams.model == "ResNext":
