@@ -108,9 +108,7 @@ def validate(model, hparams, dataloader, criterion, device):
     return acc, total_loss
 
 
-def main(
-    hparams: Hparams, device_override: str = None, warm_start: bool = False
-) -> None:
+def main(hparams: Hparams, device_override: str = None) -> None:
 
     if torch.cuda.is_available():
         device = "cuda"
@@ -156,7 +154,7 @@ def main(
 
     epoch_offset = 0
 
-    if warm_start:
+    if hparams.warm_start:
         params = torch.load(model_pth)
         model.load_state_dict(params["model_state_dict"])
         optimizer.load_state_dict(params["optimizer_state_dict"])
@@ -176,6 +174,7 @@ def main(
 
         curr_lr = float(optimizer.param_groups[0]["lr"])
 
+        model.train()
         train_acc, train_loss = train(
             model, hparams, train_loader, optimizer, criterion, scaler, device
         )
@@ -186,7 +185,9 @@ def main(
             )
         )
 
-        val_acc, val_loss = validate(model, hparams, val_loader, criterion, device)
+        model.eval()
+        with torch.no_grad():
+            val_acc, val_loss = validate(model, hparams, val_loader, criterion, device)
 
         print("Val Acc {:.04f}%\t Val Loss {:.04f}".format(val_acc, val_loss))
 

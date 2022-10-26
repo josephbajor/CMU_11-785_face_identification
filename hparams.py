@@ -24,6 +24,7 @@ class Hparams:
     batch_size: int = 164
     lr: float = 1e-3
     epochs: int = 100
+    warm_start: bool = True
 
     ### Model Parameters ###
     model: str = "ResNext-BN"
