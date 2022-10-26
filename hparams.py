@@ -28,7 +28,7 @@ class Hparams:
     force_lr: float = None  # None if disabled
 
     ### Model Parameters ###
-    model: str = "ResNext"
+    model: str = "ResNext-BN"
     optim_func: str = "AdamW"
     drop_blocks: bool = False  # Disables blocks for entire batch
     drop_path: bool = True  # Disables blocks for certian samples per batch
@@ -37,8 +37,8 @@ class Hparams:
     label_smoothing: float = 0.25
 
     ## ResBlock Params ##
-    block_depth: tuple = (5, 5, 12, 5)
-    block_channels: tuple = (96, 192, 384, 768)
+    block_depth: tuple = (3, 3, 27, 3)
+    block_channels: tuple = (128, 256, 512, 1024)
     kernel_size: int = 7  # Must be odd
     density: int = 4
 
@@ -65,7 +65,7 @@ class Hparams:
         model_dir: os.PathLike = "/home/josephbajor/models/"  # CompEng
 
     ### WandB Parameters ###
-    architecture: str = f"{model}{'_Tform' if use_transforms else ''}_v5_{optim_func}_{'SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
+    architecture: str = f"{model}_Base_{'_Tform' if use_transforms else ''}_v5_{optim_func}{'_SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     project: str = "hw2p2-ablations"
     use_wandb: bool = True
 
