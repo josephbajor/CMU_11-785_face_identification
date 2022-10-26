@@ -136,7 +136,7 @@ def main(
     if hparams.model == "ResNext-BN":
         model = ResNext_BN(hparams).to(device)
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.15)
+    criterion = nn.CrossEntropyLoss(label_smoothing=hparams.label_smoothing)
 
     if hparams.optim_func == "AdamW":
         optimizer = torch.optim.AdamW(

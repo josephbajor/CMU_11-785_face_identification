@@ -21,17 +21,18 @@ class Hparams:
     transform_stack_tensor: tuple = (transforms.RandomErasing(p=0.3),)
 
     ### Training Parameters ###
-    batch_size: int = 256
+    batch_size: int = 128
     lr: float = 1e-3
     epochs: int = 100
 
     ### Model Parameters ###
     model: str = "ResNext-BN"
     optim_func: str = "AdamW"
-    drop_blocks: bool = False  # Disables blocks for entire batch
-    drop_path: bool = True  # Disables blocks for certian samples per batch
+    drop_blocks: bool = True  # Disables blocks for entire batch
+    drop_path: bool = False  # Disables blocks for certian samples per batch
     max_drop_prob: float = 0.5
-    weight_decay: float = 0.01
+    weight_decay: float = 0.3
+    label_smoothing: float = 0.25
 
     ## ResBlock Params ##
     block_depth: tuple = (5, 5, 12, 5)
