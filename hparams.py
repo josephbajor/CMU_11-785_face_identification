@@ -7,7 +7,7 @@ from torchvision import transforms
 class Hparams:
 
     ### Preprocessing Parameters ###
-    use_transforms: bool = False
+    use_transforms: bool = True
 
     transform_stack_PIL: tuple = (
         transforms.ColorJitter(
@@ -21,7 +21,7 @@ class Hparams:
     transform_stack_tensor: tuple = (transforms.RandomErasing(p=0.3),)
 
     ### Training Parameters ###
-    batch_size: int = 128
+    batch_size: int = 164
     lr: float = 1e-3
     epochs: int = 100
 
