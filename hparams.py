@@ -30,7 +30,7 @@ class Hparams:
     batch_size: int = 124
     lr: float = 1e-3
     epochs: int = 100
-    warm_start: bool = False
+    warm_start: bool = True
     force_lr: float = None  # None if disabled
 
     ### Model Parameters ###
@@ -39,7 +39,7 @@ class Hparams:
     drop_blocks: bool = False  # Disables blocks for entire batch
     drop_path: bool = True  # Disables blocks for certian samples per batch
     max_drop_prob: float = 0.5
-    weight_decay: float = 0.06
+    weight_decay: float = 1e-4
     label_smoothing: float = 0.15
 
     ## ResBlock Params ##
@@ -49,6 +49,10 @@ class Hparams:
     density: int = 4
 
     ### Sys Parameters ###
+    force_load_path: os.PathLike = (
+        "/home/josephbajor/models/ResNext-BN_Base__Tform_v5_AdamW_33blocks_MaxC1024"
+    )
+    force_save_path: os.PathLike = "/home/josephbajor/models/finetuneRN"
     platform: str = "cloud"
 
     if platform == "desktop":

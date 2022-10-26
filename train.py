@@ -120,9 +120,20 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     if device_override:
         device = device_override
 
-    model_pth = os.path.join(
-        hparams.model_dir, f"{hparams.architecture}/checkpoint.pth"
-    )
+    # Create paths for model saving/loading
+    if hparams.force_load_path == None:
+        model_pth = os.path.join(
+            hparams.model_dir, f"{hparams.architecture}/checkpoint.pth"
+        )
+    else:
+        model_pth = os.path.join(hparams.force_load_path, "/checkpoint.pth")
+
+    if hparams.force_save_path == None:
+        model_save_pth = model_pth
+    else:
+        model_save_pth = os.path.join(hparams.force_save_path, "/checkpoint.pth")
+
+    # create model save directory if it does not exist
     os.makedirs(
         os.path.join(hparams.model_dir, f"{hparams.architecture}/"), exist_ok=True
     )
@@ -140,6 +151,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         optimizer = torch.optim.AdamW(
             model.parameters(), lr=hparams.lr, weight_decay=hparams.weight_decay
         )
+
     if hparams.optim_func == "SGD":
         optimizer = torch.optim.SGD(
             params=model.parameters(), lr=hparams.lr, weight_decay=hparams.weight_decay
@@ -152,7 +164,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     # )
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=15, eta_min=1e-6
+        optimizer, T_max=8, eta_min=1e-6
     )
 
     scaler = torch.cuda.amp.GradScaler()
@@ -163,6 +175,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         params = torch.load(model_pth)
         model.load_state_dict(params["model_state_dict"])
         optimizer.load_state_dict(params["optimizer_state_dict"])
+        scheduler.load_state_dict(params["scheduler_state_dict"])
         epoch_offset = params["epoch"]
 
     if hparams.force_lr is not None:
@@ -182,7 +195,6 @@ def main(hparams: Hparams, device_override: str = None) -> None:
 
         curr_lr = float(optimizer.param_groups[0]["lr"])
 
-        model.train()
         train_acc, train_loss = train(
             model, hparams, train_loader, optimizer, criterion, scaler, device
         )
@@ -193,7 +205,6 @@ def main(hparams: Hparams, device_override: str = None) -> None:
             )
         )
 
-        model.eval()
         with torch.no_grad():
             val_acc, val_loss = validate(model, hparams, val_loader, criterion, device)
 
@@ -223,7 +234,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
                     "val_acc": val_acc,
                     "epoch": epoch,
                 },
-                model_pth,
+                model_save_pth,
             )
             print(f"Saved to {model_pth}")
             best_valacc = val_acc

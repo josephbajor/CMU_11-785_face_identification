@@ -186,7 +186,7 @@ class ResNext_BN(nn.Module):
                 nn.BatchNorm2d(hparams.block_channels[0]),
             ]
         )
-        ### Core Network Construction ###
+        ### Core Network Initialization ###
 
         for i in range(len(self.hparams.block_channels)):
 
