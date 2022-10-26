@@ -24,8 +24,8 @@ class Hparams:
     batch_size: int = 124
     lr: float = 2e-3
     epochs: int = 100
-    warm_start: bool = False
-    force_lr: float = None  # None if disabled
+    warm_start: bool = True
+    force_lr: float = 1e-3  # None if disabled
 
     ### Model Parameters ###
     model: str = "ResNext-BN"
@@ -33,8 +33,8 @@ class Hparams:
     drop_blocks: bool = False  # Disables blocks for entire batch
     drop_path: bool = True  # Disables blocks for certian samples per batch
     max_drop_prob: float = 0.5
-    weight_decay: float = 0.1
-    label_smoothing: float = 0.25
+    weight_decay: float = 0.06
+    label_smoothing: float = 0.20
 
     ## ResBlock Params ##
     block_depth: tuple = (3, 3, 27, 3)

@@ -147,9 +147,14 @@ def main(hparams: Hparams, device_override: str = None) -> None:
     else:
         assert NameError, "optim_func must be AdamW or SGD!"
 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer=optimizer, patience=3
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer=optimizer, patience=3
+    # )
+
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=10, eta_min=1e-6
     )
+
     scaler = torch.cuda.amp.GradScaler()
 
     epoch_offset = 0
@@ -202,7 +207,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
                 "train_Acc": train_acc,
                 "validation_Acc": val_acc,
                 "validation_loss": val_loss,
-                "learning_Rate": curr_lr,
+                "learning_Rate": scheduler.get_last_lr(),
             }
         )
 
