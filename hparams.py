@@ -50,9 +50,9 @@ class Hparams:
 
     ### Sys Parameters ###
     force_load_path: os.PathLike = (
-        "/home/josephbajor/models/ResNext-BN_Base__Tform_v5_AdamW_33blocks_MaxC1024"
+        "/home/josephbajor/models/ResNext-BN_Base__Tform_v5_AdamW_33blocks_MaxC1024/"
     )
-    force_save_path: os.PathLike = "/home/josephbajor/models/finetuneRN"
+    force_save_path: os.PathLike = "/home/josephbajor/models/finetuneRN/"
     platform: str = "cloud"
 
     if platform == "desktop":
