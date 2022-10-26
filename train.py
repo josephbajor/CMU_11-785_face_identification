@@ -160,6 +160,9 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         optimizer.load_state_dict(params["optimizer_state_dict"])
         epoch_offset = params["epoch"]
 
+    if hparams.force_lr is not None:
+        optimizer.param_groups[0]["lr"] = hparams.force_lr
+
     run = initiate_run(hparams)
 
     wandb.watch(model, log="all")

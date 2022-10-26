@@ -25,6 +25,7 @@ class Hparams:
     lr: float = 1e-3
     epochs: int = 100
     warm_start: bool = True
+    force_lr: float = 1e-2  # None if disabled
 
     ### Model Parameters ###
     model: str = "ResNext-BN"
