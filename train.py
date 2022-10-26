@@ -126,12 +126,12 @@ def main(hparams: Hparams, device_override: str = None) -> None:
             hparams.model_dir, f"{hparams.architecture}/checkpoint.pth"
         )
     else:
-        model_pth = os.path.join(hparams.force_load_path, "/checkpoint.pth")
+        model_pth = os.path.join(hparams.force_load_path, "checkpoint.pth")
 
     if hparams.force_save_path == None:
         model_save_pth = model_pth
     else:
-        model_save_pth = os.path.join(hparams.force_save_path, "/checkpoint.pth")
+        model_save_pth = os.path.join(hparams.force_save_path, "checkpoint.pth")
 
     # create model save directory if it does not exist
     os.makedirs(
