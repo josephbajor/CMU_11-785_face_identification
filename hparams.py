@@ -27,7 +27,7 @@ class Hparams:
     transform_stack_tensor: tuple = ()
 
     ### Training Parameters ###
-    batch_size: int = 6
+    batch_size: int = 168
     lr: float = 1e-3
     epochs: int = 100
     warm_start: bool = False
@@ -51,9 +51,9 @@ class Hparams:
     density: int = 4
 
     ### Sys Parameters ###
-    force_load_path: os.PathLike = None
-    force_save_path: os.PathLike = None
-    platform: str = "desktop"
+    force_load_path: os.PathLike = "/home/josephbajor/models/finetuneRN"
+    force_save_path: os.PathLike = "/home/josephbajor/models/finetuneRN2"
+    platform: str = "cloud"
 
     if platform == "desktop":
         data_dir: os.PathLike = (
