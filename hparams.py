@@ -27,11 +27,13 @@ class Hparams:
     transform_stack_tensor: tuple = ()
 
     ### Training Parameters ###
-    batch_size: int = 124
+    batch_size: int = 6
     lr: float = 1e-3
     epochs: int = 100
-    warm_start: bool = True
+    warm_start: bool = False
     force_lr: float = None  # None if disabled
+    ft_loss_weight: float = 0.5
+    use_ft_loss: bool = True
 
     ### Model Parameters ###
     model: str = "ResNext-BN"
@@ -49,11 +51,9 @@ class Hparams:
     density: int = 4
 
     ### Sys Parameters ###
-    force_load_path: os.PathLike = (
-        "/home/josephbajor/models/ResNext-BN_Base__Tform_v5_AdamW_33blocks_MaxC1024/"
-    )
-    force_save_path: os.PathLike = "/home/josephbajor/models/finetuneRN/"
-    platform: str = "cloud"
+    force_load_path: os.PathLike = None
+    force_save_path: os.PathLike = None
+    platform: str = "desktop"
 
     if platform == "desktop":
         data_dir: os.PathLike = (
@@ -77,7 +77,7 @@ class Hparams:
     ### WandB Parameters ###
     architecture: str = f"{model}_Base_{'_Tform' if use_transforms else ''}_v5_{optim_func}{'_SD' if drop_blocks else ''}_{sum(block_depth)}blocks_MaxC{max(block_channels)}"
     project: str = "hw2p2-ablations"
-    use_wandb: bool = True
+    use_wandb: bool = False
 
     def wandb_export(self):
         to_exclude = [

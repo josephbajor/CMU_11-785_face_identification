@@ -7,10 +7,21 @@ from dataproc import build_loaders
 from hparams import Hparams
 from model import ResNext_BN, ResNext
 from utils import initiate_run
+from loss import ArcFace
 import wandb
 
 
-def train(model, hparams, dataloader, optimizer, criterion, scaler, device):
+def train(
+    model: nn.Module,
+    hparams: Hparams,
+    dataloader: torch.utils.data.DataLoader,
+    optimizer,
+    criterion,
+    scaler,
+    device,
+    ft_optimizer,
+    ft_criterion,
+):
 
     model.train()
 
@@ -27,15 +38,22 @@ def train(model, hparams, dataloader, optimizer, criterion, scaler, device):
     num_correct = 0
     total_loss = 0
 
+    # Move fine tuning loss to the proper device
+    ft_criterion.to(device)
+
     for i, (images, labels) in enumerate(dataloader):
 
         optimizer.zero_grad()  # Zero gradients
+        ft_optimizer.zero_grad()
 
         images, labels = images.to(device), labels.to(device)
 
         with torch.cuda.amp.autocast():  # This implements mixed precision. Thats it!
-            outputs = model(images)
+            emb, outputs = model(images, headless=True)
             loss = criterion(outputs, labels)
+
+            if hparams.use_ft_loss:
+                loss2 = hparams.ft_loss_weight * ft_criterion(emb, labels)
 
         # Update no. of correct predictions & loss as we iterate
         num_correct += int((torch.argmax(outputs, axis=1) == labels).sum())
@@ -49,8 +67,15 @@ def train(model, hparams, dataloader, optimizer, criterion, scaler, device):
             lr="{:.04f}".format(float(optimizer.param_groups[0]["lr"])),
         )
 
-        scaler.scale(loss).backward()  # This is a replacement for loss.backward()
-        scaler.step(optimizer)  # This is a replacement for optimizer.step()
+        scaler.scale(loss).backward(retain_graph=True if hparams.use_ft_loss else False)
+        scaler.scale(loss2).backward()
+
+        # Manual gradient update for fine-tune loss
+        for param in ft_criterion.parameters():
+            param.grad.data *= 1.0 / hparams.ft_loss_weight
+
+        scaler.step(optimizer)
+        scaler.step(ft_optimizer)
         scaler.update()
 
         # TODO? Depending on your choice of scheduler,
@@ -138,7 +163,8 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         os.path.join(hparams.model_dir, f"{hparams.architecture}/"), exist_ok=True
     )
 
-    os.makedirs(hparams.force_save_path, exist_ok=True)
+    if hparams.force_save_path is not None:
+        os.makedirs(hparams.force_save_path, exist_ok=True)
 
     train_loader, val_loader, test_loader = build_loaders(hparams)
 
@@ -148,6 +174,12 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         model = ResNext_BN(hparams).to(device)
 
     criterion = nn.CrossEntropyLoss(label_smoothing=hparams.label_smoothing)
+
+    ft_criterion = ArcFace(hparams.block_channels[-1], 7000, device, s=64.0, m=0.5)
+
+    for p in ft_criterion.parameters():
+        print(p)
+        print(len(p))
 
     if hparams.optim_func == "AdamW":
         optimizer = torch.optim.AdamW(
@@ -160,6 +192,8 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         )
     else:
         assert NameError, "optim_func must be AdamW or SGD!"
+
+    ft_optimizer = torch.optim.SGD(params=ft_criterion.parameters(), lr=0.1)
 
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     #     optimizer=optimizer, patience=3
@@ -198,7 +232,15 @@ def main(hparams: Hparams, device_override: str = None) -> None:
         curr_lr = float(optimizer.param_groups[0]["lr"])
 
         train_acc, train_loss = train(
-            model, hparams, train_loader, optimizer, criterion, scaler, device
+            model,
+            hparams,
+            train_loader,
+            optimizer,
+            criterion,
+            scaler,
+            device,
+            ft_optimizer,
+            ft_criterion,
         )
 
         print(
@@ -212,7 +254,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
 
         print("Val Acc {:.04f}%\t Val Loss {:.04f}".format(val_acc, val_loss))
 
-        scheduler.step(epoch)
+        scheduler.step()
 
         wandb.log(
             {
@@ -238,7 +280,7 @@ def main(hparams: Hparams, device_override: str = None) -> None:
                 },
                 model_save_pth,
             )
-            print(f"Saved to {model_pth}")
+            print(f"Saved to {model_save_pth}")
             best_valacc = val_acc
             if val_acc > 0.8:
                 wandb.save(model_pth)

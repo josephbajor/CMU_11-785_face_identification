@@ -248,7 +248,7 @@ class ResNext_BN(nn.Module):
         x = x.flatten(start_dim=1)
 
         if headless:
-            return x
+            return x, self.head(x)
         return self.head(x)
 
 
